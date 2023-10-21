@@ -1,0 +1,110 @@
+/*DATA*/
+%web_drop_table(WORK.GDI_data);
+
+
+FILENAME REFFILE '/home/u63516215/GDI_data.xlsx';
+
+PROC IMPORT DATAFILE=REFFILE
+	DBMS=XLSX
+	OUT=WORK.GDI_data;
+	GETNAMES=YES;
+RUN;
+
+PROC CONTENTS DATA=WORK.GDI_data; RUN;
+
+
+%web_open_table(WORK.GDI_data);
+
+
+
+
+/* summary statistics*/
+
+proc means data=WORK.GDI_DATA chartype mean std min max n vardef=df;
+	var 'Gender Development Index (2021)'n 'Gender Development Index (2012)'n 
+		'Gender Development Index (2013)'n 'Gender Development Index (2014)'n 
+		'Gender Development Index (2015)'n 'Gender Development Index (2016)'n 
+		'Gender Development Index (2017)'n 'Gender Development Index (2018)'n 
+		'Gender Development Index (2019)'n 'Gender Development Index (2020)'n;
+run;
+
+
+
+/*Disribution Analysis*/
+
+proc univariate data=WORK.GDI_DATA;
+	ods select Histogram;
+	var 'Gender Development Index (2012)'n 'Gender Development Index (2021)'n;
+	histogram 'Gender Development Index (2012)'n 
+		'Gender Development Index (2021)'n;
+run;
+
+
+
+/*correlation*/
+proc corr data=WORK.GDI_DATA pearson nosimple noprob plots=none;
+	var 'Gender Development Index (2021)'n;
+	with 'Gender Development Index (2012)'n;
+run;
+
+
+
+/*histogram*/
+
+proc sgplot data=WORK.GDI_DATA;
+	histogram 'Gender Development Index (2021)'n / scale=count 
+		fillattrs=(color=CXe6cadf);
+	density 'Gender Development Index (2021)'n;
+	density 'Gender Development Index (2021)'n / type=Kernel;
+	yaxis grid;
+run;
+
+
+/*boxplot*/
+proc sgplot data=WORK.GDI_DATA;
+	vbox 'Gender Development Index (2021)'n / boxwidth=0.5 
+		fillattrs=(color=CXd1cae6);
+	yaxis grid;
+run;
+
+
+
+/* t test */
+proc ttest data=WORK.GDI_DATA sides=2 h0=0 plots(showh0);
+	var 'Gender Development Index (2021)'n;
+run;
+
+
+
+/*Paired t test*/
+data Work._Paired_diffs_;
+	set WORK.GDI_DATA;
+	_Difference_='Gender Development Index (2012)'n - 'Gender Development Index (2021)'n;
+	label _Difference_="Difference: 'Gender Development Index (2012)'n - 'Gender Development Index (2021)'n";
+run;
+
+/* Test for normality */
+proc univariate data=Work._Paired_diffs_ normal mu0=0;
+	ods select TestsForNormality;
+	var _Difference_;
+run;
+
+/* t test */
+proc ttest data=WORK.GDI_DATA sides=2 h0=0 plots(showh0);
+	paired 'Gender Development Index (2012)'n*'Gender Development Index (2021)'n;
+run;
+
+/* Clean up */
+proc delete data=work._paired_diffs_;
+run;
+
+
+/*One Way Anova*/
+proc glm data=WORK.GDI_DATA;
+	class Continent;
+	model 'Gender Development Index (2021)'n=Continent;
+	means Continent / hovtest=levene welch plots=none;
+	lsmeans Continent / adjust=tukey pdiff alpha=.05;
+	run;
+quit;
+
